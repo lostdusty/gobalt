@@ -14,8 +14,8 @@ import (
 
 var (
 	CobaltApi    = "https://co.wuk.sh" //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
+	UserLanguage = "en-US"             //Replace this following the ISO 639-1 standard. This downloads dubbed YouTube audio according to the language set here. Only takes effect if DubbedYoutubeAudio is set to true.
 	useragent    = "Gobalt/1.0"
-	UserLanguage = "en-US"
 )
 
 type serverInfo struct {
@@ -52,6 +52,7 @@ type Settings struct {
 	VideoOnly             bool       //Downloads only the video, audio is muted/removed. Default: false
 	DubbedYoutubeAudio    bool       //Pass the User-Language HTTP header to use the dubbed audio of the respective language, must change according to user's preference, default is English (US). Uses ISO 639-1 standard.
 	DisableVideoMetadata  bool       //Removes file metadata. Default: false
+	ConvertTwitterGifs    bool       //Changes whether twitter gifs are converted to .gif (Twitter gifs are usually stored in .mp4 format). Default: true
 }
 
 type codecs string
@@ -81,8 +82,27 @@ const (
 	Pretty  pattern = "pretty"  //Looks like: Video Title (1080p, h264, youtube, yPYZpwSpKmA).mp4 | audio: Audio Title - Audio Author (soundcloud, 1242868615).mp3
 )
 
-func New() *Settings { //Function New() creates the settings struct with default values.
-	options := &Settings{
+/*
+	Function CreateDefaultSettings() creates the Settings struct with default values:
+
+Url: ""
+VideoCodec:            H264,
+VideoQuality:          1080,
+AudioCodec:            Best,
+FilenamePattern:       Pretty,
+AudioOnly:             false,
+RemoveTikTokWatermark: false,
+FullTikTokAudio:       false,
+VideoOnly:             false,
+DubbedYoutubeAudio:    false,
+DisableVideoMetadata:  false,
+ConvertTwitterGifs:    false,
+
+You MUST set an url before calling Run().
+*/
+func CreateDefaultSettings() Settings {
+
+	options := Settings{
 		Url:                   "",
 		VideoCodec:            H264,
 		VideoQuality:          1080,
@@ -94,11 +114,13 @@ func New() *Settings { //Function New() creates the settings struct with default
 		VideoOnly:             false,
 		DubbedYoutubeAudio:    false,
 		DisableVideoMetadata:  false,
+		ConvertTwitterGifs:    true,
 	}
 	return options
 }
 
-func Run(opts *Settings) (*cobaltResponse, error) {
+// Function Run() requests the final url on /api/json and returns error case it fails to do so.
+func Run(opts Settings) (*cobaltResponse, error) {
 	validUrl, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_\+.~#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_\+.~#?&//=]*)?`, opts.Url)
 	if opts.Url == "" || !validUrl {
 		return nil, errors.New("invalid url provided")
@@ -124,6 +146,7 @@ func Run(opts *Settings) (*cobaltResponse, error) {
 		"isAudioMuted":    fmt.Sprint(opts.VideoOnly),
 		"dubLang":         fmt.Sprint(opts.DubbedYoutubeAudio),
 		"disableMetadata": fmt.Sprint(opts.DisableVideoMetadata),
+		"twitterGif":      fmt.Sprint(opts.ConvertTwitterGifs),
 	}
 
 	payload, _ := json.Marshal(optionsPayload)
@@ -174,12 +197,14 @@ func Run(opts *Settings) (*cobaltResponse, error) {
 	}, nil
 }
 
-func CobaltServerInfo(url string) (*serverInfo, error) {
+// This function is called before Run() to check if the cobalt server used is reachable.
+// If you can't contact the main server, you should using one of the instances listed in https://instances.hyper.lol/.
+func CobaltServerInfo(api string) (*serverInfo, error) {
 	//Check if the server is reachable
 	client := &http.Client{
 		Timeout: 15 * time.Second,
 	}
-	req, err := http.NewRequest("GET", url+"/api/serverInfo", nil)
+	req, err := http.NewRequest("GET", api+"/api/serverInfo", nil)
 	req.Header.Add("User-Agent", useragent)
 	if err != nil {
 		return nil, err
