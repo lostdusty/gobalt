@@ -150,7 +150,6 @@ func Run(opts Settings) (*cobaltResponse, error) {
 		ConvertTwitterGifs:    opts.ConvertTwitterGifs,
 	}
 	payload, _ := json.Marshal(optionsPayload)
-	fmt.Println(string(payload))
 
 	req, err := http.NewRequest("POST", CobaltApi+"/api/json", strings.NewReader(string(payload)))
 	req.Header.Add("User-Agent", useragent)
