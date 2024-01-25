@@ -41,18 +41,18 @@ type cobaltResponse struct {
 }
 
 type Settings struct {
-	Url                   string     //Any URL from bilibili.com, instagram, pinterest, reddit, rutube, soundcloud, streamable, tiktok, tumblr, twitch clips, twitter/x, vimeo, vine archive, vk or youtube. Will be url encoded later.
-	VideoCodec            codecs     //H264, AV1 or VP9, defaults to H264.
-	VideoQuality          int        //144p to 2160p (4K), if not specified will default to 1080p.
-	AudioCodec            audioCodec //MP3, Opus, Ogg or Wav. If not specified will default to best.
-	FilenamePattern       pattern    //Classic, Basic, Pretty or Nerdy. Defaults to Pretty
-	AudioOnly             bool       //Removes the video, downloads audio only. Default: false
-	RemoveTikTokWatermark bool       //Removes TikTok watermark from TikTok videos. Default: false
-	FullTikTokAudio       bool       //Enables download of original sound used in a tiktok video. Default: false
-	VideoOnly             bool       //Downloads only the video, audio is muted/removed. Default: false
-	DubbedYoutubeAudio    bool       //Pass the User-Language HTTP header to use the dubbed audio of the respective language, must change according to user's preference, default is English (US). Uses ISO 639-1 standard.
-	DisableVideoMetadata  bool       //Removes file metadata. Default: false
-	ConvertTwitterGifs    bool       //Changes whether twitter gifs are converted to .gif (Twitter gifs are usually stored in .mp4 format). Default: true
+	Url                   string     `json:"url"`             //Any URL from bilibili.com, instagram, pinterest, reddit, rutube, soundcloud, streamable, tiktok, tumblr, twitch clips, twitter/x, vimeo, vine archive, vk or youtube. Will be url encoded later.
+	VideoCodec            codecs     `json:"vCodec"`          //H264, AV1 or VP9, defaults to H264.
+	VideoQuality          int        `json:"vQuality,string"` //144p to 2160p (4K), if not specified will default to 1080p.
+	AudioCodec            audioCodec `json:"aFormat"`         //MP3, Opus, Ogg or Wav. If not specified will default to best.
+	FilenamePattern       pattern    `json:"filenamePattern"` //Classic, Basic, Pretty or Nerdy. Defaults to Pretty
+	AudioOnly             bool       `json:"isAudioOnly"`     //Removes the video, downloads audio only. Default: false
+	RemoveTikTokWatermark bool       `json:"isNoTTWatermark"` //Removes TikTok watermark from TikTok videos. Default: false
+	FullTikTokAudio       bool       `json:"isTTFullAudio"`   //Enables download of original sound used in a tiktok video. Default: false
+	VideoOnly             bool       `json:"isAudioMuted"`    //Downloads only the video, audio is muted/removed. Default: false
+	DubbedYoutubeAudio    bool       `json:"dubLang"`         //Pass the User-Language HTTP header to use the dubbed audio of the respective language, must change according to user's preference, default is English (US). Uses ISO 639-1 standard.
+	DisableVideoMetadata  bool       `json:"disableMetadata"` //Removes file metadata. Default: false
+	ConvertTwitterGifs    bool       `json:"twitterGif"`      //Changes whether twitter gifs are converted to .gif (Twitter gifs are usually stored in .mp4 format). Default: true
 }
 
 type codecs string
@@ -135,21 +135,22 @@ func Run(opts Settings) (*cobaltResponse, error) {
 		Timeout: 15 * time.Second,
 	}
 
-	optionsPayload := map[string]string{"url": url.QueryEscape(opts.Url),
-		"vCodec":          string(opts.VideoCodec),
-		"vQuality":        fmt.Sprint(opts.VideoQuality),
-		"aFormat":         string(opts.AudioCodec),
-		"filenamePattern": string(opts.FilenamePattern),
-		"isAudioOnly":     fmt.Sprint(opts.AudioOnly),
-		"isNoTTWatermark": fmt.Sprint(opts.RemoveTikTokWatermark),
-		"isTTFullAudio":   fmt.Sprint(opts.FullTikTokAudio),
-		"isAudioMuted":    fmt.Sprint(opts.VideoOnly),
-		"dubLang":         fmt.Sprint(opts.DubbedYoutubeAudio),
-		"disableMetadata": fmt.Sprint(opts.DisableVideoMetadata),
-		"twitterGif":      fmt.Sprint(opts.ConvertTwitterGifs),
+	optionsPayload := Settings{
+		Url:                   url.QueryEscape(opts.Url),
+		VideoCodec:            opts.VideoCodec,
+		VideoQuality:          opts.VideoQuality,
+		AudioCodec:            opts.AudioCodec,
+		FilenamePattern:       opts.FilenamePattern,
+		AudioOnly:             opts.AudioOnly,
+		RemoveTikTokWatermark: opts.RemoveTikTokWatermark,
+		FullTikTokAudio:       opts.FullTikTokAudio,
+		VideoOnly:             opts.VideoOnly,
+		DubbedYoutubeAudio:    opts.DubbedYoutubeAudio,
+		DisableVideoMetadata:  opts.DisableVideoMetadata,
+		ConvertTwitterGifs:    opts.ConvertTwitterGifs,
 	}
-
 	payload, _ := json.Marshal(optionsPayload)
+	fmt.Println(string(payload))
 
 	req, err := http.NewRequest("POST", CobaltApi+"/api/json", strings.NewReader(string(payload)))
 	req.Header.Add("User-Agent", useragent)
