@@ -47,7 +47,7 @@ type Settings struct {
 	AudioCodec            audioCodec `json:"aFormat"`         //MP3, Opus, Ogg or Wav. If not specified will default to best.
 	FilenamePattern       pattern    `json:"filenamePattern"` //Classic, Basic, Pretty or Nerdy. Defaults to Pretty
 	AudioOnly             bool       `json:"isAudioOnly"`     //Removes the video, downloads audio only. Default: false
-	RemoveTikTokWatermark bool       `json:"isNoTTWatermark"` //Removes TikTok watermark from TikTok videos. Default: false
+	//RemoveTikTokWatermark bool       `json:"isNoTTWatermark"` //Removes TikTok watermark from TikTok videos. Default: false
 	FullTikTokAudio       bool       `json:"isTTFullAudio"`   //Enables download of original sound used in a tiktok video. Default: false
 	VideoOnly             bool       `json:"isAudioMuted"`    //Downloads only the video, audio is muted/removed. Default: false
 	DubbedYoutubeAudio    bool       `json:"dubLang"`         //Pass the User-Language HTTP header to use the dubbed audio of the respective language, must change according to user's preference, default is English (US). Uses ISO 639-1 standard.
@@ -91,7 +91,6 @@ VideoQuality:          1080,
 AudioCodec:            Best,
 FilenamePattern:       Pretty,
 AudioOnly:             false,
-RemoveTikTokWatermark: false,
 FullTikTokAudio:       false,
 VideoOnly:             false,
 DubbedYoutubeAudio:    false,
@@ -109,7 +108,7 @@ func CreateDefaultSettings() Settings {
 		AudioCodec:            Best,
 		FilenamePattern:       Pretty,
 		AudioOnly:             false,
-		RemoveTikTokWatermark: false,
+		//RemoveTikTokWatermark: false,
 		FullTikTokAudio:       false,
 		VideoOnly:             false,
 		DubbedYoutubeAudio:    false,
@@ -142,7 +141,7 @@ func Run(opts Settings) (*cobaltResponse, error) {
 		AudioCodec:            opts.AudioCodec,
 		FilenamePattern:       opts.FilenamePattern,
 		AudioOnly:             opts.AudioOnly,
-		RemoveTikTokWatermark: opts.RemoveTikTokWatermark,
+		//RemoveTikTokWatermark: opts.RemoveTikTokWatermark,
 		FullTikTokAudio:       opts.FullTikTokAudio,
 		VideoOnly:             opts.VideoOnly,
 		DubbedYoutubeAudio:    opts.DubbedYoutubeAudio,
@@ -192,7 +191,7 @@ func Run(opts Settings) (*cobaltResponse, error) {
 	return &cobaltResponse{
 		Status: media.Status,
 		URL:    media.URL,
-		Text:   "ok", //Cobalt doesn't return any text if its ok
+		Text:   "ok", //Cobalt doesn't return any text if it is ok
 		URLs:   media.URLs,
 	}, nil
 }
