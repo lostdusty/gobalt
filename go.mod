@@ -1,3 +1,3 @@
-module github.com/princessmortix/gobalt
+module github.com/lostdusty/gobalt
 
 go 1.21.5
