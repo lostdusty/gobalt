@@ -1,4 +1,5 @@
 // Package Gobalt provides a go way to communicate with https://cobalt.tools servers.
+
 package gobalt
 
 import (
@@ -17,20 +18,24 @@ import (
 var (
 	CobaltApi    = "https://co.wuk.sh" //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
 	UserLanguage = "en"                //Replace this following the ISO 639-1 standard. This downloads dubbed YouTube audio according to the language set here. Only takes effect if DubbedYoutubeAudio is set to true.
-	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.0.2 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
+	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.0.6 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
+	client       = http.Client{Timeout: 10 * time.Second} //Reuse the HTTP client
 )
 
 type ServerInfo struct {
-	Version   string `json:"version"`   //cobalt version
-	Commit    string `json:"commit"`    //git commit
-	Branch    string `json:"branch"`    //git branch
-	Name      string `json:"name"`      //name of the server
-	URL       string `json:"url"`       //full url of the api
-	Cors      int    `json:"cors"`      //cors status, either 0 or 1.
-	StartTime string `json:"startTime"` //server start time in linux epoch
+	Version        string `json:"version"`          //cobalt version
+	Commit         string `json:"commit,omitempty"` //git commit
+	Branch         string `json:"branch,omitempty"` //git branch
+	Name           string `json:"name,omitempty"`   //name of the server
+	URL            string `json:"url"`              //full url of the api
+	Cors           int    `json:"cors,omitempty"`   //cors status, either 0 or 1.
+	StartTime      int64  `json:"startTime,string"` //server start time in linux epoch
+	FrontendUrl    string //Front end URL.
+	ApiOnline      bool   //Status of the api.
+	FrontEndOnline bool   //Status of the front end.
 }
 
-type cobaltResponse struct {
+type CobaltResponse struct {
 	Status string     `json:"status"` //Will be error / redirect / stream / success / rate-limit / picker.
 	Picker []struct { //array of picker items
 		Type  string `json:"type"`
@@ -43,15 +48,16 @@ type cobaltResponse struct {
 }
 
 type CobaltInstances []struct {
-	Cors      int    `json:"cors"`
-	Commit    string `json:"commit,omitempty"`
-	Name      string `json:"name,omitempty"`
-	StartTime int64  `json:"startTime"`
-	API       string `json:"api"`
-	Version   string `json:"version"`
-	Branch    string `json:"branch,omitempty"`
-	FrontEnd  string `json:"frontEnd"`
-	Status    bool   `json:"status"`
+	Cors           int    `json:"cors"`             //Cors status: 0 = Enabled; 1 = Disabled; -1 = Instance offline.
+	Commit         string `json:"commit,omitempty"` //Commit id. Empty if the instance is offline.
+	Name           string `json:"name,omitempty"`   //Name of the server. Empty if the instance is offline.
+	StartTime      int64  `json:"startTime"`        //Time when the service started in linux epoch (seconds). -1 Means the instance is offline
+	API            string `json:"api"`              //API Url.
+	Version        string `json:"version"`          //Version of cobalt running, "-1" if offiline.
+	Branch         string `json:"branch,omitempty"` //Branch the server is using, empty if the server is offline
+	FrontEnd       string `json:"frontEnd"`         //Front end url.
+	ApiOnline      bool   `json:"api_online"`       //Status of the server api. True if online.
+	FrontEndOnline bool   `json:"frontend_online"`  //Status of the frontend. Online = true.
 }
 
 type Settings struct {
@@ -96,8 +102,7 @@ const (
 	Pretty  pattern = "pretty"  //Looks like: Video Title (1080p, h264, youtube).mp4 | audio: Audio Title - Audio Author (soundcloud).mp3
 )
 
-//Function CreateDefaultSettings() creates the Settings struct with default values:
-
+// CreateDefaultSettings Function CreateDefaultSettings() creates the Settings struct with default values:
 // Url: ""
 // VideoCodec:            H264,
 // VideoQuality:          1080,
@@ -113,25 +118,19 @@ const (
 func CreateDefaultSettings() Settings {
 
 	options := Settings{
-		Url:                  "",
-		VideoCodec:           H264,
-		VideoQuality:         1080,
-		AudioCodec:           Best,
-		FilenamePattern:      Pretty,
-		AudioOnly:            false,
-		UseVimeoDash:         false,
-		FullTikTokAudio:      false,
-		VideoOnly:            false,
-		DubbedYoutubeAudio:   false,
-		DisableVideoMetadata: false,
-		ConvertTwitterGifs:   true,
+		Url:                "",
+		VideoCodec:         H264,
+		VideoQuality:       1080,
+		AudioCodec:         Best,
+		FilenamePattern:    Pretty,
+		ConvertTwitterGifs: true,
 	}
 	return options
 }
 
-// Function Run() requests the final url on /api/json and returns error case it fails to do so.
-func Run(opts Settings) (*cobaltResponse, error) {
-	validUrl, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_\+.~#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_\+.~#?&//=]*)?`, opts.Url)
+// Run Function Run() requests the final url on /api/json and returns error case it fails to do so.
+func Run(opts Settings) (*CobaltResponse, error) {
+	validUrl, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_+.~#?&/=]{2,256}\.[a-z]{2,4}\b(/[-a-zA-Z0-9@:%_+.~#?&/=]*)?`, opts.Url)
 	if opts.Url == "" || !validUrl {
 		return nil, errors.New("invalid url provided")
 	}
@@ -139,10 +138,6 @@ func Run(opts Settings) (*cobaltResponse, error) {
 	_, err := CobaltServerInfo(CobaltApi)
 	if err != nil {
 		return nil, fmt.Errorf("could not contact the cobalt server at url %v due of the following error %v", CobaltApi, err)
-	}
-
-	client := &http.Client{
-		Timeout: 15 * time.Second,
 	}
 
 	optionsPayload := Settings{
@@ -161,7 +156,7 @@ func Run(opts Settings) (*cobaltResponse, error) {
 	}
 	payload, _ := json.Marshal(optionsPayload)
 
-	req, err := http.NewRequest("POST", CobaltApi+"/api/json", strings.NewReader(string(payload)))
+	req, err := http.NewRequest(http.MethodPost, CobaltApi+"/api/json", strings.NewReader(string(payload)))
 	req.Header.Add("User-Agent", useragent)
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
@@ -174,14 +169,19 @@ func Run(opts Settings) (*cobaltResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			return
+		}
+	}(res.Body)
 
 	jsonbody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	var media cobaltResponse
+	var media CobaltResponse
 	err = json.Unmarshal(jsonbody, &media)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func Run(opts Settings) (*cobaltResponse, error) {
 		media.URLs = append(media.URLs, media.URL)
 	}
 
-	return &cobaltResponse{
+	return &CobaltResponse{
 		Status: media.Status,
 		URL:    media.URL,
 		Text:   "ok", //Cobalt doesn't return any text if it is ok
@@ -207,14 +207,11 @@ func Run(opts Settings) (*cobaltResponse, error) {
 	}, nil
 }
 
-// This function is called before Run() to check if the cobalt server used is reachable.
+// CobaltServerInfo This function is called before Run() to check if the cobalt server used is reachable.
 // If you can't contact the main server, try getting another instance using GetCobaltinstances().
 func CobaltServerInfo(api string) (*ServerInfo, error) {
 	//Check if the server is reachable
-	client := &http.Client{
-		Timeout: 15 * time.Second,
-	}
-	req, err := http.NewRequest("GET", api+"/api/serverInfo", nil)
+	req, err := http.NewRequest(http.MethodGet, api+"/api/serverInfo", nil)
 	req.Header.Add("User-Agent", useragent)
 	if err != nil {
 		return nil, err
@@ -236,7 +233,6 @@ func CobaltServerInfo(api string) (*ServerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	res.Body.Close()
 	return &ServerInfo{
 		Branch:    serverResponse.Branch,
 		Commit:    serverResponse.Commit,
@@ -250,10 +246,7 @@ func CobaltServerInfo(api string) (*ServerInfo, error) {
 
 // GetCobaltInstances makes a request to instances.hyper.lol and returns a list of all online cobalt instances.
 func GetCobaltInstances() ([]ServerInfo, error) {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-	req, err := http.NewRequest("GET", "https://instances.hyper.lol/instances.json", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://instances.hyper.lol/instances.json", nil)
 	req.Header.Add("User-Agent", useragent)
 	if err != nil {
 		return nil, err
@@ -275,20 +268,23 @@ func GetCobaltInstances() ([]ServerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	res.Body.Close()
 
 	instancesList := make([]ServerInfo, 0)
 
 	for _, v := range cobaltHyperInstances {
-		if v.Status {
+
+		if v.ApiOnline {
 			instancesList = append(instancesList, ServerInfo{
-				Version:   v.Version,
-				Commit:    v.Commit,
-				Branch:    v.Branch,
-				Name:      v.Name,
-				URL:       v.API,
-				Cors:      v.Cors,
-				StartTime: fmt.Sprint(v.StartTime),
+				Version:        v.Version,
+				Commit:         v.Commit,
+				Branch:         v.Branch,
+				Name:           v.Name,
+				URL:            v.API,
+				Cors:           v.Cors,
+				StartTime:      v.StartTime,
+				FrontendUrl:    v.FrontEnd,
+				ApiOnline:      v.ApiOnline,
+				FrontEndOnline: v.FrontEndOnline,
 			})
 		}
 	}
