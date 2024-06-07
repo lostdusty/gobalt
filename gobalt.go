@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	CobaltApi    = "https://co.wuk.sh" //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
-	UserLanguage = "en"                //Replace this following the ISO 639-1 standard. This downloads dubbed YouTube audio according to the language set here. Only takes effect if DubbedYoutubeAudio is set to true.
-	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.0.6 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
+	CobaltApi    = "https://api.cobalt.tools" //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
+	UserLanguage = "en"                       //Replace this following the ISO 639-1 standard. This downloads dubbed YouTube audio according to the language set here. Only takes effect if DubbedYoutubeAudio is set to true.
+	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.0.7 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
 	client       = http.Client{Timeout: 10 * time.Second} //Reuse the HTTP client
 )
 
@@ -67,7 +67,7 @@ type Settings struct {
 	AudioCodec           audioCodec `json:"aFormat"`         //MP3, Opus, Ogg or Wav. If not specified will default to best.
 	FilenamePattern      pattern    `json:"filenamePattern"` //Classic, Basic, Pretty or Nerdy. Defaults to Pretty
 	AudioOnly            bool       `json:"isAudioOnly"`     //Removes the video, downloads audio only. Default: false
-	UseVimeoDash         bool       `json:"vimeoDash"`       //Changes whether streamed file type is preferred for vimeo videos.. Default: false
+	TikTokH265           bool       `json:"tiktokH265"`      //Changes whether 1080p h265 [tiktok] videos are preferred or not. Default: false
 	FullTikTokAudio      bool       `json:"isTTFullAudio"`   //Enables download of original sound used in a tiktok video. Default: false
 	VideoOnly            bool       `json:"isAudioMuted"`    //Downloads only the video, audio is muted/removed. Default: false
 	DubbedYoutubeAudio   bool       `json:"dubLang"`         //Pass the User-Language HTTP header to use the dubbed audio of the respective language, must change according to user's preference, default is English (US). Uses ISO 639-1 standard.
@@ -114,6 +114,7 @@ const (
 // DubbedYoutubeAudio:    false,
 // DisableVideoMetadata:  false,
 // ConvertTwitterGifs:    false,
+// TikTokH265:			  false,
 // You MUST set an url before calling Run().
 func CreateDefaultSettings() Settings {
 
@@ -147,7 +148,7 @@ func Run(opts Settings) (*CobaltResponse, error) {
 		AudioCodec:           opts.AudioCodec,
 		FilenamePattern:      opts.FilenamePattern,
 		AudioOnly:            opts.AudioOnly,
-		UseVimeoDash:         opts.UseVimeoDash,
+		TikTokH265:           opts.TikTokH265,
 		FullTikTokAudio:      opts.FullTikTokAudio,
 		VideoOnly:            opts.VideoOnly,
 		DubbedYoutubeAudio:   opts.DubbedYoutubeAudio,

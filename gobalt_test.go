@@ -2,6 +2,7 @@ package gobalt
 
 import (
 	"net/url"
+	"regexp"
 	"testing"
 )
 
@@ -40,4 +41,18 @@ func TestHealthMainInstance(t *testing.T) {
 		t.Fatalf("bad health of %v instance. got %v", CobaltApi, err)
 	}
 
+}
+
+func BenchmarkRegexUrlParse(b *testing.B) {
+	a, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_+.~#?&/=]{2,256}\.[a-z]{2,4}\b(/[-a-zA-Z0-9@:%_+.~#?&/=]*)?`, "https://www.youtube.com/watch?v=b3rFbkFjRrA")
+	if a {
+		b.Log("regex pass")
+	}
+}
+
+func BenchmarkNetUrlParse(b *testing.B) {
+	_, err := url.Parse("https://www.youtube.com/watch?v=b3rFbkFjRrA")
+	if err != nil {
+		b.Fatalf("error parsing url: %v", err)
+	}
 }
