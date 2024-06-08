@@ -43,6 +43,26 @@ func TestHealthMainInstance(t *testing.T) {
 
 }
 
+func TestPlaylistGetter(t *testing.T) {
+	v, err := GetPlaylist("https://youtube.com/playlist?list=PLDKxz_KUEUfOJDeQ_KeQxuxG8kRRcXrWs&si=1ZfoNPcDyhum6exn")
+	if err != nil {
+		t.Fatalf("failed to get playlist: %v", err)
+	}
+	for _, p := range v {
+		t.Logf("Found music \"%v\" by %v (%v)", p.VideoTitle, p.VideoUploader, p.VideoURL)
+	}
+}
+
+func TestYoutubeDownload(t *testing.T) {
+	var e decryptor
+	v, err := getVideo(&e, "https://youtube.com/watch?v=lDoXekDxHIU")
+	if err != nil {
+		t.Fatalf("unable to download due of %v", err)
+	}
+	t.Logf("stream url:", v.StreamUrl)
+}
+
+// Benchmarks
 func BenchmarkRegexUrlParse(b *testing.B) {
 	a, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_+.~#?&/=]{2,256}\.[a-z]{2,4}\b(/[-a-zA-Z0-9@:%_+.~#?&/=]*)?`, "https://www.youtube.com/watch?v=b3rFbkFjRrA")
 	if a {
