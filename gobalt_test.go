@@ -59,7 +59,7 @@ func TestYoutubeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to download due of %v", err)
 	}
-	t.Logf("stream url:", v.StreamUrl)
+	t.Logf("stream url: %v", v.StreamUrl)
 }
 
 // Benchmarks
