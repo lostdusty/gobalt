@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,7 +21,7 @@ import (
 var (
 	CobaltApi    = "https://api.cobalt.tools" //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
 	UserLanguage = "en"                       //Replace this following the ISO 639-1 standard. This downloads dubbed YouTube audio according to the language set here. Only takes effect if DubbedYoutubeAudio is set to true.
-	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.0.7 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
+	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.0.8 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
 	client       = http.Client{Timeout: 10 * time.Second} //Reuse the HTTP client
 )
 
@@ -73,6 +76,12 @@ type Settings struct {
 	DubbedYoutubeAudio   bool       `json:"dubLang"`         //Pass the User-Language HTTP header to use the dubbed audio of the respective language, must change according to user's preference, default is English (US). Uses ISO 639-1 standard.
 	DisableVideoMetadata bool       `json:"disableMetadata"` //Removes file metadata. Default: false
 	ConvertTwitterGifs   bool       `json:"twitterGif"`      //Changes whether twitter gifs are converted to .gif (Twitter gifs are usually stored in .mp4 format). Default: true
+}
+
+type MediaInfo struct {
+	Size uint //Media size in bytes
+	Name string
+	Type string
 }
 
 type codecs string
@@ -290,4 +299,30 @@ func GetCobaltInstances() ([]ServerInfo, error) {
 		}
 	}
 	return instancesList, nil
+}
+
+func ProcessMedia(url string) (*MediaInfo, error) {
+	req, err := http.Head(url)
+	if err != nil {
+		return nil, err
+	}
+	_, parsefilename, err := mime.ParseMediaType(req.Header.Get("Content-Disposition"))
+	filename := parsefilename["filename"]
+	if err != nil {
+		filename = path.Base(req.Request.URL.Path)
+	}
+	size := req.Header.Get("Content-Length")
+	if size == "" {
+		size = "0"
+	}
+	parseSize, err := strconv.Atoi(size)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MediaInfo{
+		Size: uint(parseSize),
+		Name: filename,
+		Type: req.Header.Get("Content-Type"),
+	}, nil
 }

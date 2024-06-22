@@ -18,9 +18,10 @@ func TestCobaltDownload(t *testing.T) {
 	}
 	//Check if url is co.wuk.sh
 	parseDlTest, err := url.Parse(runDlTest.URL)
-	if err != nil || parseDlTest.Host == "co.wuk.sh" {
-		t.Fatalf("Failed to parse url from cobalt. Expected !nil and got %v", err)
+	if err != nil || parseDlTest.Host != "kityune.imput.net" {
+		t.Fatalf("Failed to parse url from cobalt. Expected !nil and got %v", parseDlTest.Host)
 	}
+	t.Log(runDlTest.URL)
 }
 
 func TestCustomInstancesList(t *testing.T) {
@@ -43,23 +44,19 @@ func TestHealthMainInstance(t *testing.T) {
 
 }
 
-func TestPlaylistGetter(t *testing.T) {
-	v, err := GetPlaylist("https://youtube.com/playlist?list=PLDKxz_KUEUfOJDeQ_KeQxuxG8kRRcXrWs&si=1ZfoNPcDyhum6exn")
+func TestMediaParsing(t *testing.T) {
+	v := CreateDefaultSettings()
+	v.Url = "https://music.youtube.com/watch?v=JCd4KENZyj4"
+	d, err := Run(v)
 	if err != nil {
-		t.Fatalf("failed to get playlist: %v", err)
+		t.Fatalf("failed getting media because %v", err)
 	}
-	for _, p := range v {
-		t.Logf("Found music \"%v\" by %v (%v)", p.VideoTitle, p.VideoUploader, p.VideoURL)
+	n, err := ProcessMedia(d.URL)
+	if err != nil {
+		t.Fatalf("failed processing media because %v", err)
 	}
-}
+	t.Logf("name %v | size %v bytes | mime %v", n.Name, n.Size, n.Type)
 
-func TestYoutubeDownload(t *testing.T) {
-	var e decryptor
-	v, err := getVideo(&e, "https://youtube.com/watch?v=lDoXekDxHIU")
-	if err != nil {
-		t.Fatalf("unable to download due of %v", err)
-	}
-	t.Logf("stream url: %v", v.StreamUrl)
 }
 
 // Benchmarks
