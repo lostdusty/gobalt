@@ -18,9 +18,10 @@ func TestCobaltDownload(t *testing.T) {
 	}
 	//Check if url is co.wuk.sh
 	parseDlTest, err := url.Parse(runDlTest.URL)
-	if err != nil || parseDlTest.Host == "co.wuk.sh" {
-		t.Fatalf("Failed to parse url from cobalt. Expected !nil and got %v", err)
+	if err != nil || parseDlTest.Host != "kityune.imput.net" {
+		t.Fatalf("Failed to parse url from cobalt. Expected !nil and got %v", parseDlTest.Host)
 	}
+	t.Log(runDlTest.URL)
 }
 
 func TestCustomInstancesList(t *testing.T) {
@@ -43,6 +44,22 @@ func TestHealthMainInstance(t *testing.T) {
 
 }
 
+func TestMediaParsing(t *testing.T) {
+	v := CreateDefaultSettings()
+	v.Url = "https://music.youtube.com/watch?v=JCd4KENZyj4"
+	d, err := Run(v)
+	if err != nil {
+		t.Fatalf("failed getting media because %v", err)
+	}
+	n, err := ProcessMedia(d.URL)
+	if err != nil {
+		t.Fatalf("failed processing media because %v", err)
+	}
+	t.Logf("name %v | size %v bytes | mime %v", n.Name, n.Size, n.Type)
+
+}
+
+// Benchmarks
 func BenchmarkRegexUrlParse(b *testing.B) {
 	a, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_+.~#?&/=]{2,256}\.[a-z]{2,4}\b(/[-a-zA-Z0-9@:%_+.~#?&/=]*)?`, "https://www.youtube.com/watch?v=b3rFbkFjRrA")
 	if a {
