@@ -9,7 +9,7 @@
 
 Gobalt provides a way to communicate with [cobalt.tools](https://cobalt.tools) using Go. To use it in your projects, simply run this command:
 ```sh
-go get https://github.com/lostdusty/gobalt
+go get github.com/lostdusty/gobalt
 ```
 
 ## Usage
