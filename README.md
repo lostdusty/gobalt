@@ -1,5 +1,5 @@
 <div align="center">
-<a href="https://pkg.go.dev/lostdusty/gobalt" title="Go API Reference" rel="nofollow"><img src="https://img.shields.io/badge/go-documentation-blue.svg?style=for-the-badge" alt="Go API Reference"></a>
+<a href="https://pkg.go.dev/github.com/lostdusty/gobalt" title="Go API Reference" rel="nofollow"><img src="https://img.shields.io/badge/go-documentation-blue.svg?style=for-the-badge" alt="Go API Reference"></a>
 <a href="https://github.com/lostdusty/gobalt/releases/lastest" title="Latest Release" rel="nofollow"><img src="https://img.shields.io/github/v/release/lostdusty/gobalt?include_prereleases&style=for-the-badge" alt="Latest Release"></a>
 
 [![Static Badge](https://img.shields.io/badge/cobalt_discord-join-blue?style=for-the-badge&logo=discord)](https://discord.gg/pQPt8HBUPu)

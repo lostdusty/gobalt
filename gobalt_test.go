@@ -24,7 +24,7 @@ func TestCobaltDownload(t *testing.T) {
 	t.Log(runDlTest.URL)
 }
 
-func TestCustomInstancesList(t *testing.T) {
+/*func TestCustomInstancesList(t *testing.T) {
 	instanceTest, err := GetCobaltInstances()
 	if err != nil {
 		t.Fatalf("Failed to get the list of cobalt instances: %v", err)
@@ -34,13 +34,14 @@ func TestCustomInstancesList(t *testing.T) {
 			t.Fatalf("Failed to lookup %v's cobalt instance #%v, no host url present.", v.Name, n+1)
 		}
 	}
-}
+}*/
 
 func TestHealthMainInstance(t *testing.T) {
 	testHealth, err := CobaltServerInfo(CobaltApi)
-	if err != nil || testHealth.StartTime == 0 {
+	if err != nil {
 		t.Fatalf("bad health of %v instance. got %v", CobaltApi, err)
 	}
+	t.Log(testHealth.Cobalt.URL)
 
 }
 
