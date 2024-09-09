@@ -1,4 +1,4 @@
-module github.com/lostdusty/gobalt
+module github.com/lostdusty/gobalt/v2
 
 go 1.22
 
