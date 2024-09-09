@@ -11,18 +11,18 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mcuadros/go-version"
 )
 
 var (
-	CobaltApi    = "https://beta.cobalt.canine.tools"     //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
-	UserLanguage = "en"                                   //Replace this following the ISO 639-1 standard. This downloads dubbed YouTube audio according to the language set here. Only takes effect if DubbedYoutubeAudio is set to true.
-	Client       = http.Client{Timeout: 10 * time.Second} //This allows you to modify the HTTP Client used in requests. This Client will be re-used.
-	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v2.0.0-Alpha (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
+	CobaltApi = "https://beta.cobalt.canine.tools"     //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
+	Client    = http.Client{Timeout: 10 * time.Second} //This allows you to modify the HTTP Client used in requests. This Client will be re-used.
+	useragent = fmt.Sprintf("gobalt/2.0.0 (+https://github.com/lostdusty/gobalt/v2; go/%v; %v/%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 )
 
 // ServerInfo is the struct used in the function CobaltServerInfo(). It contains two sub-structs: Cobalt and Git
@@ -52,8 +52,18 @@ type CobaltGitInformation struct {
 // This function is called before Run() to check if the cobalt server used is reachable.
 // If you can't contact the main server, try using another instance using GetCobaltinstances().
 func CobaltServerInfo(api string) (*ServerInfo, error) {
+	//Parse url before testing, sanity check
+	parseApiUrl, err := url.Parse(api)
+	if err != nil {
+		return nil, fmt.Errorf("net/url failed to parse provided url, check it and try again (details: %v)", err)
+	}
+
+	if parseApiUrl.Scheme == "" {
+		parseApiUrl.Scheme = "https"
+	}
+
 	//Check if the server is reachable
-	req, err := http.NewRequest(http.MethodGet, api+"/serverInfo", nil)
+	req, err := http.NewRequest(http.MethodGet, parseApiUrl.String(), nil)
 	req.Header.Add("User-Agent", useragent)
 	if err != nil {
 		return nil, err
@@ -81,20 +91,24 @@ func CobaltServerInfo(api string) (*ServerInfo, error) {
 
 //Server info end
 
-// Cobalt request
+/* Download settings structs and types */
+
+// Struct Settings contains changable options that you can change before download. An URL MUST be set before calling gobalt.Run(Settings).
 type Settings struct {
-	Url                string       `json:"url"`                   //Any URL from bilibili.com, instagram, pinterest, reddit, rutube, soundcloud, streamable, tiktok, tumblr, twitch clips, twitter/x, vimeo, vine archive, vk or youtube.
-	Mode               downloadMode `json:"downloadMode"`          //Mode to download the videos, either Auto, Audio or Mute. Default: Auto
-	VideoFormat        videoCodecs  `json:"youtubeVideoCodec"`     //H264, AV1 or VP9, defaults to H264.
-	VideoQuality       int          `json:"videoQuality,string"`   //144p to 2160p (4K), if not specified will default to 1080p.
-	AudioFormat        audioCodec   `json:"audioFormat"`           //MP3, Opus, Ogg or Wav. If not specified will default to best.
-	AudioBitrate       int          `json:"audioBitrate"`          //Audio Bitrate settings. Values: 320Kbps, 256Kbps, 128Kbps, 96Kbps, 64Kbps or 8Kbps.
-	FilenameStyle      pattern      `json:"filenameStyle"`         //Classic, Basic, Pretty or Nerdy. Defaults to Pretty
-	TikTokH265         bool         `json:"tiktokH265"`            //Changes whether 1080p h265 [tiktok] videos are preferred or not. Default: false
-	FullTikTokAudio    bool         `json:"tiktokFullAudio"`       //Enables download of original sound used in a tiktok video. Default: false
-	DubbedYoutubeAudio bool         `json:"youtubeDubBrowserLang"` //Pass the User-Language HTTP header to use the dubbed audio of the respective language, must change according to user's preference, default is English (US). Uses ISO 639-1 standard.
-	DisableMetadata    bool         `json:"disableMetadata"`       //Removes file metadata. Default: false
-	ConvertTwitterGifs bool         `json:"twitterGif"`            //Changes whether twitter gifs are converted to .gif (Twitter gifs are usually stored in .mp4 format). Default: true
+	Url                   string       `json:"url"`                   //Any URL from bilibili.com, instagram, pinterest, reddit, rutube, soundcloud, streamable, tiktok, tumblr, twitch clips, twitter/x, vimeo, vine archive, vk or youtube (as long it's configured on the instance).
+	Mode                  downloadMode `json:"downloadMode"`          //Mode to download the videos, either Auto, Audio or Mute. Default: Auto
+	Proxy                 bool         `json:"alwaysProxy"`           //Tunnel downloaded file thru cobalt, bypassing potential restrictions and protecting your identity and privacy. Default: false
+	AudioBitrate          int          `json:"audioBitrate,string"`   //Audio Bitrate settings. Values: 320Kbps, 256Kbps, 128Kbps, 96Kbps, 64Kbps or 8Kbps. Default: 128
+	AudioFormat           audioCodec   `json:"audioFormat"`           //"Best", .mp3, .opus, .ogg or .wav. If not specified will default to "Best".
+	FilenameStyle         pattern      `json:"filenameStyle"`         //"Classic", "Basic", "Pretty" or "Nerdy". Default is "Basic".
+	DisableMetadata       bool         `json:"disableMetadata"`       //Don't include file metadata. Default: false
+	TikTokH265            bool         `json:"tiktokH265"`            //Allows downloading TikTok videos in 1080p at cost of compatibility. Default: false
+	TikTokFullAudio       bool         `json:"tiktokFullAudio"`       //Enables download of original sound used in a TikTok video. Default: false
+	TwitterConvertGif     bool         `json:"twitterGif"`            //Changes whether twitter gifs should be converted to .gif (Twitter gifs are usually looping .mp4s). Default: true
+	VideoQuality          int          `json:"videoQuality,string"`   //144p to 2160p (4K), if not specified will default to 1080p.
+	YoutubeDubbedAudio    bool         `json:"youtubeDubBrowserLang"` //Downloads the YouTube dubbed audio according to the value set in YoutubeDubbedLanguage (and if present). Default is English (US). Follows the ISO 639-1 standard.
+	YoutubeDubbedLanguage string       `json:"youtubeDubLang"`        //Language code to download the dubbed audio, Default is "en".
+	YoutubeVideoFormat    videoCodecs  `json:"youtubeVideoCodec"`     //Which video format to download from YouTube, see videoCodecs type for details.
 }
 
 type downloadMode string
@@ -132,114 +146,87 @@ const (
 	Pretty  pattern = "pretty"  //Looks like: Video Title (1080p, h264, youtube).mp4 | audio: Audio Title - Audio Author (soundcloud).mp3
 )
 
-// Cobalt request end
-
-// Cobalt response
-type CobaltResponse struct {
-	Status string     `json:"status"` //Will be error / redirect / stream / success / rate-limit / picker.
-	Picker []struct { //array of picker items
-		Type  string `json:"type"`
-		URL   string `json:"url"`
-		Thumb string `json:"thumb"`
-	} `json:"picker"`
-	URL  string   `json:"url"`  //Returns the download link. If the status is picker this field will be empty. Direct link to a file or a link to cobalt's live render.
-	Text string   `json:"text"` //Various text, mostly used for errors.
-	URLs []string //If the status is picker all the urls will go here.
-}
-
-//Cobalt response end
-
-type CobaltInstances []struct {
-	Cors           int    `json:"cors"`             //Cors status: 0 = Enabled; 1 = Disabled; -1 = Instance offline.
-	Commit         string `json:"commit,omitempty"` //Commit id. Empty if the instance is offline.
-	Name           string `json:"name,omitempty"`   //Name of the server. Empty if the instance is offline.
-	StartTime      int64  `json:"startTime"`        //Time when the service started in linux epoch (seconds). -1 Means the instance is offline
-	API            string `json:"api"`              //API Url.
-	Version        string `json:"version"`          //Version of cobalt running, "-1" if offiline.
-	Branch         string `json:"branch,omitempty"` //Branch the server is using, empty if the server is offline
-	FrontEnd       string `json:"frontEnd"`         //Front end url.
-	ApiOnline      bool   `json:"api_online"`       //Status of the server api. True if online.
-	FrontEndOnline bool   `json:"frontend_online"`  //Status of the frontend. Online = true.
-}
-
-type MediaInfo struct {
-	Size uint //Media size in bytes
-	Name string
-	Type string
-}
-
-// CreateDefaultSettings Function CreateDefaultSettings() creates the Settings struct with default values:
-// Url: ""
-// VideoCodec:            H264,
-// VideoQuality:          1080,
-// AudioCodec:            Best,
-// FilenamePattern:       Pretty,
-// AudioOnly:             false,
-// FullTikTokAudio:       false,
-// VideoOnly:             false,
-// DubbedYoutubeAudio:    false,
-// DisableVideoMetadata:  false,
-// ConvertTwitterGifs:    false,
-// TikTokH265:			  false,
+// This function creates the Settings struct with these default values:
+//
+//   - Url: "" (empty)
+//   - YoutubeVideoFormat: `H264`
+//   - VideoQuality: `1080`
+//   - AudioFormat: `Best`
+//   - AudioBitrate: `128`
+//   - FilenameStyle: `Basic`
+//   - TwitterConvertGif: `true`
+//   - Mode: `Auto`
+//
 // You MUST set an url before calling Run().
 func CreateDefaultSettings() Settings {
-
 	options := Settings{
-		Url:                "",
-		VideoFormat:        H264,
-		VideoQuality:       1080,
-		AudioFormat:        Best,
-		FilenameStyle:      Pretty,
-		ConvertTwitterGifs: true,
+		Url:                   "",
+		YoutubeVideoFormat:    H264,
+		VideoQuality:          1080,
+		AudioFormat:           Best,
+		AudioBitrate:          128,
+		FilenameStyle:         Basic,
+		TwitterConvertGif:     true,
+		Mode:                  Auto,
+		YoutubeDubbedLanguage: "en",
 	}
 	return options
 }
 
-// Run Function Run() requests the final url on /api/json and returns error case it fails to do so.
-func Run(opts Settings) (*CobaltResponse, error) {
-	validUrl, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_+.~#?&/=]{2,256}\.[a-z]{2,4}\b(/[-a-zA-Z0-9@:%_+.~#?&/=]*)?`, opts.Url)
-	if opts.Url == "" || !validUrl {
-		return nil, errors.New("invalid url provided")
+// Cobalt response to your request
+type CobaltResponse struct {
+	Status string      `json:"status"` //4 possible status. Error = Something went wrong, see CobaltResponse.Error.Code | Tunnel or Redirect = Everything is right. | Picker = Multiple media, see CobaltResponse.Picker.
+	Picker *[]struct { //This is an array of items, each containing the media type, url to download and thumbnail.
+		Type  string `json:"type"`  //Type of the media, either photo, video or gif
+		URL   string `json:"url"`   //Url to download.
+		Thumb string `json:"thumb"` //Media preview url, optional.
+	} `json:"picker"`
+	URL      string `json:"url"`      //Returns the download link. If the status is picker this field will be empty. Direct link to a file or a link to cobalt's live render.
+	Filename string `json:"filename"` //Various text, mostly used for errors.
+	Error    *Error `json:"error"`    //Error information, may be <NIL> if theres no error.
+}
+
+type Error struct {
+	Code    string  `json:"code"`    // Machine-readable error code explaining the failure reason.
+	Context Context `json:"context"` //(optional) container for providing more context.
+}
+
+type Context struct {
+	Service string `json:"service"`         //What service failed.
+	Limit   int    `json:"limit,omitempty"` //Number providing the ratelimit maximum number of requests, or maximum downloadable video duration
+}
+
+// Run(gobalt.Settings) sends the request to the provided cobalt api and returns the server response (gobalt.CobaltResponse) and error, use this to download something AFTER setting your desired configuration.
+func Run(options Settings) (*CobaltResponse, error) {
+	//Check if an url is set.
+	if options.Url == "" {
+		return nil, errors.New("no url was provided in Settings.Url")
 	}
 
+	//Do a basic check to see if the server is online and handling requests
 	_, err := CobaltServerInfo(CobaltApi)
 	if err != nil {
-		return nil, fmt.Errorf("could not contact the cobalt server at url %v due of the following error %v", CobaltApi, err)
+		return nil, fmt.Errorf("hello to cobalt instance %v failed, reason: %v", CobaltApi, err)
 	}
 
-	optionsPayload := Settings{
-		Url:                url.QueryEscape(opts.Url),
-		VideoFormat:        opts.VideoFormat,
-		VideoQuality:       opts.VideoQuality,
-		AudioFormat:        opts.AudioFormat,
-		FilenameStyle:      opts.FilenameStyle,
-		TikTokH265:         opts.TikTokH265,
-		FullTikTokAudio:    opts.FullTikTokAudio,
-		DubbedYoutubeAudio: opts.DubbedYoutubeAudio,
-		DisableMetadata:    opts.DisableMetadata,
-		ConvertTwitterGifs: opts.ConvertTwitterGifs,
+	jsonBody, err := json.Marshal(options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal json body due of the following error: %v", err)
 	}
-	payload, _ := json.Marshal(optionsPayload)
 
-	req, err := http.NewRequest(http.MethodPost, CobaltApi+"/api/json", strings.NewReader(string(payload)))
+	req, err := http.NewRequest(http.MethodPost, CobaltApi, strings.NewReader(string(jsonBody)))
 	req.Header.Add("User-Agent", useragent)
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("User-Language", UserLanguage)
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := Client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to send your request, %v", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			return
-		}
-	}(res.Body)
+	defer res.Body.Close()
 
 	jsonbody, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -252,28 +239,60 @@ func Run(opts Settings) (*CobaltResponse, error) {
 		return nil, err
 	}
 
-	if media.Status == "error" || media.Status == "rate-limit" {
-		return nil, fmt.Errorf("cobalt error: %v", media.Text)
+	if media.Status == "error" {
+		return nil, fmt.Errorf("cobalt rejected our request: %v", media.Error.Code)
 	}
 
-	if media.Status == "picker" {
-		for _, p := range media.Picker {
-			media.URLs = append(media.URLs, p.URL)
-		}
-	} else if media.Status == "stream" {
-		media.URLs = append(media.URLs, media.URL)
-	}
+	return &media, nil
+}
 
-	return &CobaltResponse{
-		Status: media.Status,
-		URL:    media.URL,
-		Text:   "ok", //Cobalt doesn't return any text if it is ok
-		URLs:   media.URLs,
-	}, nil
+/* End of: Download settings structs and types */
+
+//Cobalt response end
+
+type CobaltInstance struct {
+	Trust     string   `json:"trust"`
+	APIOnline bool     `json:"api_online"`
+	Cors      int      `json:"cors"`
+	Commit    string   `json:"commit"`
+	Services  Services `json:"services,omitempty"`
+	Version   string   `json:"version"`
+	Branch    string   `json:"branch"`
+	Score     float64  `json:"score"`
+	Protocol  string   `json:"protocol"`
+	Name      string   `json:"name"`
+	StartTime int64    `json:"startTime"`
+	API       string   `json:"api"`
+	FrontEnd  string   `json:"frontEnd"`
+}
+
+type Services struct {
+	Youtube       bool `json:"youtube"`
+	Facebook      bool `json:"facebook"`
+	Rutube        bool `json:"rutube"`
+	Tumblr        bool `json:"tumblr"`
+	Bilibili      bool `json:"bilibili"`
+	Pinterest     bool `json:"pinterest"`
+	Instagram     bool `json:"instagram"`
+	Soundcloud    bool `json:"soundcloud"`
+	YoutubeMusic  bool `json:"youtube_music"`
+	Odnoklassniki bool `json:"odnoklassniki"`
+	Dailymotion   bool `json:"dailymotion"`
+	Snapchat      bool `json:"snapchat"`
+	Twitter       bool `json:"twitter"`
+	Loom          bool `json:"loom"`
+	Vimeo         bool `json:"vimeo"`
+	Streamable    bool `json:"streamable"`
+	Vk            bool `json:"vk"`
+	Tiktok        bool `json:"tiktok"`
+	Reddit        bool `json:"reddit"`
+	TwitchClips   bool `json:"twitch_clips"`
+	YoutubeShorts bool `json:"youtube_shorts"`
+	Vine          bool `json:"vine"`
 }
 
 // GetCobaltInstances makes a request to instances.hyper.lol and returns a list of all online cobalt instances.
-/*func GetCobaltInstances() ([]ServerInfo, error) {
+func GetCobaltInstances() ([]CobaltInstance, error) {
 	req, err := http.NewRequest(http.MethodGet, "https://instances.hyper.lol/instances.json", nil)
 	req.Header.Add("User-Agent", useragent)
 	if err != nil {
@@ -291,34 +310,30 @@ func Run(opts Settings) (*CobaltResponse, error) {
 		return nil, err
 	}
 
-	var cobaltHyperInstances CobaltInstances
-	err = json.Unmarshal(jsonbody, &cobaltHyperInstances)
+	var listOfCobaltInstances []CobaltInstance
+	err = json.Unmarshal(jsonbody, &listOfCobaltInstances)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("json err? %v", err)
 	}
 
-	instancesList := make([]ServerInfo, 0)
-
-	for _, v := range cobaltHyperInstances {
-
-		if v.ApiOnline {
-			instancesList = append(instancesList, ServerInfo{
-				Version:        v.Version,
-				Commit:         v.Commit,
-				Branch:         v.Branch,
-				Name:           v.Name,
-				URL:            v.API,
-				Cors:           v.Cors,
-				StartTime:      v.StartTime,
-				FrontendUrl:    v.FrontEnd,
-				ApiOnline:      v.ApiOnline,
-				FrontEndOnline: v.FrontEndOnline,
-			})
+	parseModernInstances := make([]CobaltInstance, 0)
+	for _, v := range listOfCobaltInstances {
+		if version.Compare(v.Version, "10.0.0", ">=") {
+			parseModernInstances = append(parseModernInstances, v)
 		}
-	}
-	return instancesList, nil
-}*/
 
+	}
+
+	return parseModernInstances, nil
+}
+
+type MediaInfo struct {
+	Size uint   //Media size in bytes.
+	Name string //Media name.
+	Type string //Mime type of the media.
+}
+
+// ProcessMedia(url) attempts to fetch the file size, mime type and name.
 func ProcessMedia(url string) (*MediaInfo, error) {
 	req, err := http.Head(url)
 	if err != nil {

@@ -1,40 +1,40 @@
 package gobalt
 
 import (
-	"net/url"
-	"regexp"
+	"math/rand/v2"
 	"testing"
 )
 
 func TestCobaltDownload(t *testing.T) {
 	dlTest := CreateDefaultSettings()
-	dlTest.Url = "https://www.youtube.com/watch?v=b3rFbkFjRrA"
-	dlTest.AudioCodec = Ogg
-	dlTest.VideoCodec = VP9
-	dlTest.FilenamePattern = Nerdy
+	dlTest.Url = "https://www.youtube.com/watch?v=bV68_Vy0Uis&list=RD-Sr668sSEIA&index=19"
+	dlTest.AudioFormat = Ogg
+	dlTest.YoutubeVideoFormat = VP9
 	runDlTest, err := Run(dlTest)
 	if err != nil {
-		t.Fatalf("Failed to fetch from cobalt, got %v", err)
+		t.Fatalf("%v", err)
 	}
-	//Check if url is co.wuk.sh
-	parseDlTest, err := url.Parse(runDlTest.URL)
-	if err != nil || parseDlTest.Host != "kityune.imput.net" {
-		t.Fatalf("Failed to parse url from cobalt. Expected !nil and got %v", parseDlTest.Host)
-	}
-	t.Log(runDlTest.URL)
+	t.Log(runDlTest.Picker)
 }
 
-/*func TestCustomInstancesList(t *testing.T) {
+func TestCustomInstancesList(t *testing.T) {
 	instanceTest, err := GetCobaltInstances()
-	if err != nil {
-		t.Fatalf("Failed to get the list of cobalt instances: %v", err)
-	}
-	for n, v := range instanceTest {
-		if v.URL == "" {
-			t.Fatalf("Failed to lookup %v's cobalt instance #%v, no host url present.", v.Name, n+1)
+	if err != nil || len(instanceTest) == 0 {
+		if len(instanceTest) == 0 {
+			t.Log("Looks like no v10.0.0 instance was found, this test will be skipped.")
+			t.SkipNow() //Skips this test
 		}
+		t.Fatalf("Failed to get the list of cobalt instances. Either theres no instances found, or something else went wrong.\nErr: %v, instances found: %v", err, len(instanceTest))
 	}
-}*/
+	t.Logf("Found %v instances!\n", len(instanceTest))
+	randomInstanceToTest := rand.IntN(len(instanceTest))
+	t.Logf("Will test instance #%v", randomInstanceToTest)
+	testHealthRandomInstance, err := CobaltServerInfo(instanceTest[randomInstanceToTest].Protocol + "://" + instanceTest[randomInstanceToTest].API)
+	if err != nil {
+		t.Logf("unable to test api selected due of %v", err)
+	}
+	t.Logf("Sucessfully accessed the instance %v, running cobalt %v", testHealthRandomInstance.Cobalt.URL, testHealthRandomInstance.Cobalt.Version)
+}
 
 func TestHealthMainInstance(t *testing.T) {
 	testHealth, err := CobaltServerInfo(CobaltApi)
@@ -58,19 +58,4 @@ func TestMediaParsing(t *testing.T) {
 	}
 	t.Logf("name %v | size %v bytes | mime %v", n.Name, n.Size, n.Type)
 
-}
-
-// Benchmarks
-func BenchmarkRegexUrlParse(b *testing.B) {
-	a, _ := regexp.MatchString(`[-a-zA-Z0-9@:%_+.~#?&/=]{2,256}\.[a-z]{2,4}\b(/[-a-zA-Z0-9@:%_+.~#?&/=]*)?`, "https://www.youtube.com/watch?v=b3rFbkFjRrA")
-	if a {
-		b.Log("regex pass")
-	}
-}
-
-func BenchmarkNetUrlParse(b *testing.B) {
-	_, err := url.Parse("https://www.youtube.com/watch?v=b3rFbkFjRrA")
-	if err != nil {
-		b.Fatalf("error parsing url: %v", err)
-	}
 }
