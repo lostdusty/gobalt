@@ -16,12 +16,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mcuadros/go-version"
 )
 
 var (
 	CobaltApi    = "https://api.cobalt.tools" //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
 	UserLanguage = "en"                       //Replace this following the ISO 639-1 standard. This downloads dubbed YouTube audio according to the language set here. Only takes effect if DubbedYoutubeAudio is set to true.
-	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.0.8 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
+	useragent    = fmt.Sprintf("Mozilla/5.0 (%v; %v); gobalt/v1.1.0 (%v; %v); +(https://github.com/lostdusty/gobalt)", runtime.GOOS, runtime.GOARCH, runtime.Compiler, runtime.Version())
 	client       = http.Client{Timeout: 10 * time.Second} //Reuse the HTTP client
 )
 
@@ -31,7 +33,7 @@ type ServerInfo struct {
 	Branch         string `json:"branch,omitempty"` //git branch
 	Name           string `json:"name,omitempty"`   //name of the server
 	URL            string `json:"url"`              //full url of the api
-	Cors           int    `json:"cors,omitempty"`   //cors status, either 0 or 1.
+	Cors           *int   `json:"cors,omitempty"`   //cors status, either 0 or 1.
 	StartTime      int64  `json:"startTime,string"` //server start time in linux epoch
 	FrontendUrl    string //Front end URL.
 	ApiOnline      bool   //Status of the api.
@@ -147,7 +149,7 @@ func Run(opts Settings) (*CobaltResponse, error) {
 
 	_, err := CobaltServerInfo(CobaltApi)
 	if err != nil {
-		return nil, fmt.Errorf("could not contact the cobalt server at url %v due of the following error %v", CobaltApi, err)
+		return nil, fmt.Errorf("could not contact the cobalt server at url %v due of the following error: %v", CobaltApi, err)
 	}
 
 	optionsPayload := Settings{
@@ -243,6 +245,11 @@ func CobaltServerInfo(api string) (*ServerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if serverResponse.Cors == nil {
+		return nil, errors.New("this instance is too new, please use github.com/lostdusty/gobalt/v2 to work with v10.0.0 instances")
+	}
+
 	return &ServerInfo{
 		Branch:    serverResponse.Branch,
 		Commit:    serverResponse.Commit,
@@ -283,14 +290,14 @@ func GetCobaltInstances() ([]ServerInfo, error) {
 
 	for _, v := range cobaltHyperInstances {
 
-		if v.ApiOnline {
+		if v.ApiOnline && version.Compare(v.Version, "7.15", "<=") {
 			instancesList = append(instancesList, ServerInfo{
 				Version:        v.Version,
 				Commit:         v.Commit,
 				Branch:         v.Branch,
 				Name:           v.Name,
 				URL:            v.API,
-				Cors:           v.Cors,
+				Cors:           &v.Cors,
 				StartTime:      v.StartTime,
 				FrontendUrl:    v.FrontEnd,
 				ApiOnline:      v.ApiOnline,

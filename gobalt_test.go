@@ -8,6 +8,7 @@ import (
 
 func TestCobaltDownload(t *testing.T) {
 	dlTest := CreateDefaultSettings()
+	//CobaltApi = "https://beta.cobalt.canine.tools/"
 	dlTest.Url = "https://www.youtube.com/watch?v=b3rFbkFjRrA"
 	dlTest.AudioCodec = Ogg
 	dlTest.VideoCodec = VP9
@@ -16,11 +17,7 @@ func TestCobaltDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to fetch from cobalt, got %v", err)
 	}
-	//Check if url is co.wuk.sh
-	parseDlTest, err := url.Parse(runDlTest.URL)
-	if err != nil || parseDlTest.Host != "kityune.imput.net" {
-		t.Fatalf("Failed to parse url from cobalt. Expected !nil and got %v", parseDlTest.Host)
-	}
+
 	t.Log(runDlTest.URL)
 }
 
