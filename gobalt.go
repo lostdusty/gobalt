@@ -20,9 +20,9 @@ import (
 )
 
 var (
-	CobaltApi = "https://beta.cobalt.canine.tools"     //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
+	CobaltApi = "https://cobalt-backend.canine.tools"  //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
 	Client    = http.Client{Timeout: 10 * time.Second} //This allows you to modify the HTTP Client used in requests. This Client will be re-used.
-	useragent = fmt.Sprintf("gobalt/2.0.0 (+https://github.com/lostdusty/gobalt/v2; go/%v; %v/%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	useragent = fmt.Sprintf("gobalt/2.0.1 (+https://github.com/lostdusty/gobalt/v2; go/%v; %v/%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 )
 
 // ServerInfo is the struct used in the function CobaltServerInfo(). It contains two sub-structs: Cobalt and Git
