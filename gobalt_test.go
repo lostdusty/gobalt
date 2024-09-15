@@ -14,7 +14,7 @@ func TestCobaltDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	t.Log(runDlTest.Picker)
+	t.Log(runDlTest.URL)
 }
 
 func TestCustomInstancesList(t *testing.T) {
@@ -29,7 +29,7 @@ func TestCustomInstancesList(t *testing.T) {
 	t.Logf("Found %v instances!\n", len(instanceTest))
 	randomInstanceToTest := rand.IntN(len(instanceTest))
 	t.Logf("Will test instance #%v", randomInstanceToTest)
-	testHealthRandomInstance, err := CobaltServerInfo(instanceTest[randomInstanceToTest].Protocol + "://" + instanceTest[randomInstanceToTest].API)
+	testHealthRandomInstance, err := CobaltServerInfo(instanceTest[randomInstanceToTest].API)
 	if err != nil {
 		t.Logf("unable to test api selected due of %v", err)
 	}
@@ -56,6 +56,6 @@ func TestMediaParsing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed processing media because %v", err)
 	}
-	t.Logf("name %v | size %v bytes | mime %v", n.Name, n.Size, n.Type)
+	t.Logf("name %v | size %v bytes | mime %v", d.Filename, n.Size, n.Type)
 
 }
