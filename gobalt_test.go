@@ -59,3 +59,17 @@ func TestMediaParsing(t *testing.T) {
 	t.Logf("name %v | size %v bytes | mime %v", d.Filename, n.Size, n.Type)
 
 }
+
+func TestPlaylistGet(t *testing.T) {
+	a, err := GetYoutubePlaylist("https://youtube.com/playlist?list=PLDKxz_KUEUfMDTqDgv4eHuZq1u_SQtRiu&si=a-f1kK5lSGFRJO8z")
+	if err != nil {
+		t.Fatalf("failed to get playlist: %v", err)
+	}
+	if a[0] != "https://youtu.be/gYygotHLyjo" {
+		t.Fatalf("got unexpected link: %v, instead of https://youtu.be/gYygotHLyjo", a[0])
+	}
+	t.Log("Urls of the playlist:")
+	for _, v := range a {
+		t.Log(v)
+	}
+}

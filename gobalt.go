@@ -20,9 +20,11 @@ import (
 )
 
 var (
-	CobaltApi = "https://cobalt-backend.canine.tools"  //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
-	Client    = http.Client{Timeout: 10 * time.Second} //This allows you to modify the HTTP Client used in requests. This Client will be re-used.
-	useragent = fmt.Sprintf("gobalt/2.0.1 (+https://github.com/lostdusty/gobalt/v2; go/%v; %v/%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	CobaltApi = "https://cobalt-backend.canine.tools" //Override this value to use your own cobalt instance. See https://instances.hyper.lol/ for alternatives from the main instance.
+	Client    = http.Client{
+		Timeout: 10 * time.Second,
+	} //This allows you to modify the HTTP Client used in requests. This Client will be re-used.
+	useragent = fmt.Sprintf("gobalt/2.0.2 (+https://github.com/lostdusty/gobalt/v2; go/%v; %v/%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 )
 
 // ServerInfo is the struct used in the function CobaltServerInfo(). It contains two sub-structs: Cobalt and Git
@@ -52,10 +54,13 @@ type CobaltGitInformation struct {
 // This function is called before Run() to check if the cobalt server used is reachable.
 // If you can't contact the main server, try using another instance using GetCobaltinstances().
 func CobaltServerInfo(api string) (*ServerInfo, error) {
+	if !strings.HasPrefix(api, "http") {
+		api = "http://" + api
+	}
 	//Parse url before testing, sanity check
 	parseApiUrl, err := url.Parse(api)
 	if err != nil {
-		return nil, fmt.Errorf("net/url failed to parse provided url, check it and try again (details: %v)", err)
+		return nil, fmt.Errorf("net/url failed to parse provided url, check it and try again (details: %v, url: %v)", err, api)
 	}
 
 	if parseApiUrl.Scheme == "" {
@@ -63,13 +68,7 @@ func CobaltServerInfo(api string) (*ServerInfo, error) {
 	}
 
 	//Check if the server is reachable
-	req, err := http.NewRequest(http.MethodGet, parseApiUrl.String(), nil)
-	req.Header.Add("User-Agent", useragent)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := Client.Do(req)
+	res, err := genericHttpRequest(parseApiUrl.String(), http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -293,13 +292,7 @@ type Services struct {
 
 // GetCobaltInstances makes a request to instances.hyper.lol and returns a list of all online cobalt instances.
 func GetCobaltInstances() ([]CobaltInstance, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://instances.hyper.lol/instances.json", nil)
-	req.Header.Add("User-Agent", useragent)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := Client.Do(req)
+	res, err := genericHttpRequest("https://instances.hyper.lol/instances.json", http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +306,7 @@ func GetCobaltInstances() ([]CobaltInstance, error) {
 	var listOfCobaltInstances []CobaltInstance
 	err = json.Unmarshal(jsonbody, &listOfCobaltInstances)
 	if err != nil {
-		return nil, fmt.Errorf("json err? %v", err)
+		return nil, err
 	}
 
 	parseModernInstances := make([]CobaltInstance, 0)
@@ -335,7 +328,7 @@ type MediaInfo struct {
 
 // ProcessMedia(url) attempts to fetch the file size, mime type and name.
 func ProcessMedia(url string) (*MediaInfo, error) {
-	req, err := http.Head(url)
+	req, err := genericHttpRequest(url, http.MethodHead, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -358,4 +351,57 @@ func ProcessMedia(url string) (*MediaInfo, error) {
 		Name: filename,
 		Type: req.Header.Get("Content-Type"),
 	}, nil
+}
+
+// This slice will contain urls of Youtube videos
+type Playlist []string
+
+// Function GetYoutubePlaylist(string) gets an Youtube playlist has parameter, and returns a slice []Playlist with the urls of the playlist.
+func GetYoutubePlaylist(playlist string) (Playlist, error) {
+	//Parse param url
+	newYoutubePlaylistUrl, err := url.Parse(playlist)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasSuffix(newYoutubePlaylistUrl.Host, "youtube.com") || newYoutubePlaylistUrl.Path != "/playlist" {
+		return nil, errors.New("non youtube playlist url provided")
+	}
+
+	getUrls, err := genericHttpRequest(fmt.Sprintf("https://playlist.kwiatekmiki.pl/api/getvideos?url=%v", newYoutubePlaylistUrl.String()), http.MethodGet, nil)
+	if err != nil {
+		return nil, err
+	}
+	if getUrls.StatusCode != 200 {
+		return nil, fmt.Errorf("%v", getUrls.Status)
+	}
+
+	unmarshalBody, err := io.ReadAll(getUrls.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var list Playlist
+	err = json.Unmarshal(unmarshalBody, &list)
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
+// Function to do generic, less complex http requests, to avoid code repetitions. Internal use of the library only.
+func genericHttpRequest(url, method string, body io.Reader) (*http.Response, error) {
+	request, err := http.NewRequest(method, url, body)
+	request.Header.Add("User-Agent", useragent)
+
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := Client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
