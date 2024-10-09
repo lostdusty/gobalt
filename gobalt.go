@@ -372,7 +372,8 @@ func GetYoutubePlaylist(playlist string) (Playlist, error) {
 		return nil, err
 	}
 	if getUrls.StatusCode != 200 {
-		return nil, fmt.Errorf("%v", getUrls.Status)
+		read, _ := io.ReadAll(getUrls.Body)
+		return nil, fmt.Errorf("%v\n%v", getUrls.Status, string(read))
 	}
 
 	unmarshalBody, err := io.ReadAll(getUrls.Body)
