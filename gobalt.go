@@ -263,6 +263,7 @@ type CobaltInstance struct {
 	StartTime int64    `json:"startTime"`
 	API       string   `json:"api"`
 	FrontEnd  string   `json:"frontEnd"`
+	Turnstile bool     `json:"turnstile"`
 }
 
 type Services struct {
@@ -372,8 +373,7 @@ func GetYoutubePlaylist(playlist string) (Playlist, error) {
 		return nil, err
 	}
 	if getUrls.StatusCode != 200 {
-		read, _ := io.ReadAll(getUrls.Body)
-		return nil, fmt.Errorf("%v\n%v", getUrls.Status, string(read))
+		return nil, fmt.Errorf("failed to get playlists: %v", getUrls.Status)
 	}
 
 	unmarshalBody, err := io.ReadAll(getUrls.Body)
@@ -402,6 +402,10 @@ func genericHttpRequest(url, method string, body io.Reader) (*http.Response, err
 	response, err := Client.Do(request)
 	if err != nil {
 		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		return nil, fmt.Errorf("request failed with %v", response.Status)
 	}
 
 	return response, nil
