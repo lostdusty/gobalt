@@ -10,6 +10,7 @@ func TestCobaltDownload(t *testing.T) {
 	dlTest.Url = "https://www.youtube.com/watch?v=bV68_Vy0Uis&list=RD-Sr668sSEIA&index=19"
 	dlTest.AudioFormat = Ogg
 	dlTest.YoutubeVideoFormat = VP9
+	CobaltApi = "https://cobalt-api.kwiatekmiki.com"
 	runDlTest, err := Run(dlTest)
 	if err != nil {
 		t.Fatalf("%v", err)

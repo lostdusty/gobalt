@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"runtime"
 	"strconv"
@@ -25,6 +26,7 @@ var (
 		Timeout: 10 * time.Second,
 	} //This allows you to modify the HTTP Client used in requests. This Client will be re-used.
 	useragent = fmt.Sprintf("gobalt/2.0.2 (+https://github.com/lostdusty/gobalt/v2; go/%v; %v/%v)", runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	ApiKey    = os.Getenv("COBALT_API_KEY") //Some instances need an API key to work, set it here. Default is from environment variable `COBALT_API_KEY`.
 )
 
 // ServerInfo is the struct used in the function CobaltServerInfo(). It contains two sub-structs: Cobalt and Git
@@ -217,6 +219,7 @@ func Run(options Settings) (*CobaltResponse, error) {
 	req.Header.Add("User-Agent", useragent)
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Api-Key "+ApiKey)
 	if err != nil {
 		return nil, err
 	}
@@ -293,6 +296,9 @@ type Services struct {
 
 // GetCobaltInstances makes a request to instances.hyper.lol and returns a list of all online cobalt instances.
 func GetCobaltInstances() ([]CobaltInstance, error) {
+	//Temporary disabled due of instance scraping abuse.
+	return nil, errors.New("service unavailable")
+
 	res, err := genericHttpRequest("https://instances.hyper.lol/instances.json", http.MethodGet, nil)
 	if err != nil {
 		return nil, err
